@@ -6,6 +6,11 @@ import AppKit
 /// even though what's inside each section is different.
 struct NetworkPopoverView: View {
     @ObservedObject var model: AppModel
+    /// Today's usage is the more useful number at a glance — a live rate
+    /// only means something the instant you're looking at it — so that's
+    /// the default; the segmented control below the rings switches to live
+    /// speed for anyone who wants that instead.
+    @State private var showLiveSpeed = false
 
     private var isPaused: Bool { !model.settings.networkTrackingEnabled }
 
@@ -87,27 +92,46 @@ struct NetworkPopoverView: View {
         }
     }
 
-    // MARK: Hero — live speed, ring-styled like the break countdown
+    // MARK: Hero — today's usage by default, ring-styled like the break countdown
 
     private var hero: some View {
-        HStack(spacing: 18) {
-            speedRing(direction: "Down", symbol: "arrow.down", bps: model.downloadSpeedBps,
-                      usage: model.todayStat.bytesReceived, tint: .blue)
-            speedRing(direction: "Up", symbol: "arrow.up", bps: model.uploadSpeedBps,
-                      usage: model.todayStat.bytesSent, tint: .green)
+        VStack(spacing: 8) {
+            HStack(spacing: 18) {
+                speedRing(direction: "Down", symbol: "arrow.down", bps: model.downloadSpeedBps,
+                          usage: model.todayStat.bytesReceived, tint: .blue)
+                speedRing(direction: "Up", symbol: "arrow.up", bps: model.uploadSpeedBps,
+                          usage: model.todayStat.bytesSent, tint: .green)
+            }
+            .opacity(isPaused ? 0.4 : 1)
+
+            // An explicit, always-visible either/or — not a single button
+            // whose current label you'd have to read to know what tapping it
+            // does — for switching what the big number in each ring means.
+            Picker("", selection: $showLiveSpeed) {
+                Text("Today's Usage").tag(false)
+                Text("Live Speed").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .disabled(isPaused)
         }
-        .opacity(isPaused ? 0.4 : 1)
     }
 
-    /// An illustrative gauge, not a literal goal like the break countdown's
-    /// ring — there's no natural "full" for network speed, so a soft cap
-    /// keeps ordinary browsing mid-ring and only heavy transfers fill it.
-    /// The ring itself stays a live speed reading; today's actual usage total
-    /// sits underneath, so "how fast right now" and "how much today" are both
-    /// visible without digging into Settings.
+    /// In Usage mode the ring fills toward a concrete MB target — your own
+    /// daily data budget (Settings → Network) if you've set one, since that's
+    /// already the one number in this app meant to represent "a day's worth,"
+    /// or a plain 1 GB milestone if you haven't. In Live Speed mode there's no
+    /// such natural target, so it keeps the same illustrative 5 MB/s soft cap
+    /// as before — ordinary browsing sits mid-ring, only heavy transfers fill it.
     private func speedRing(direction: String, symbol: String, bps: Double, usage: Int, tint: Color) -> some View {
-        let cap = 5_000_000.0
-        let progress = min(1, bps / cap)
+        let usageCap = model.settings.dailyDataLimitMB > 0
+            ? Double(model.settings.dailyDataLimitMB) * 1_000_000
+            : 1_000_000_000
+        let progress = showLiveSpeed
+            ? min(1, bps / 5_000_000.0)
+            : min(1, Double(usage) / usageCap)
+        let primary = showLiveSpeed ? Format.speed(bps) : Format.bytes(usage)
+        let secondary = showLiveSpeed ? "\(Format.bytes(usage)) today" : "Live \(Format.speed(bps))"
         return VStack(spacing: 6) {
             RingView(progress: isPaused ? 0 : progress,
                      tint: isPaused ? Color.secondary : tint,
@@ -115,9 +139,11 @@ struct NetworkPopoverView: View {
                 VStack(spacing: 0) {
                     Image(systemName: symbol)
                         .font(.system(size: 11, weight: .semibold))
-                    Text(Format.speed(bps))
+                    Text(primary)
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
                 .foregroundStyle(isPaused ? Color.secondary : tint)
             }
@@ -125,9 +151,11 @@ struct NetworkPopoverView: View {
             Text(direction)
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
-            Text(Format.bytes(usage))
+            Text(secondary)
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
     }
 
