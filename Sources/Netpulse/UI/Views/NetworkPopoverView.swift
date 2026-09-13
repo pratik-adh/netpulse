@@ -290,15 +290,16 @@ struct NetworkPopoverView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Every row opens the same place — Settings → Network — regardless of
-    /// whether it's the network you're on right now or not; the "now" badge
-    /// is informational only, not a different kind of row.
+    /// Every row opens the same place — macOS's own Wi-Fi settings, not this
+    /// app's — regardless of whether it's the network you're on right now or
+    /// not; the "now" badge is informational only, not a different kind of row.
     private func networkRow(_ entry: (name: String, received: Int, sent: Int), isCurrent: Bool) -> some View {
         Button {
-            openSettings()
+            openWiFiSettings()
         } label: {
             HStack() {
                 Image(systemName: networkSymbol(for: entry.name))
+                    .padding(.horizontal, entry.name == "Other network" ? 4 : 0)
                     .font(.system(size: 10))
                     .foregroundStyle(isCurrent ? Color.green : Color.secondary)
                 Text(entry.name)
@@ -324,7 +325,7 @@ struct NetworkPopoverView: View {
             )
         }
         .buttonStyle(.plain)
-        .help("Open Network settings")
+        .help("Open Wi-Fi settings")
     }
 
     /// "Other network" is a fallback bucket (wired, VPN-only, or an
@@ -421,5 +422,12 @@ struct NetworkPopoverView: View {
     private func openSettings() {
         model.pendingSettingsTab = 5
         model.onOpenSettings?()
+    }
+
+    /// Deep-links to macOS's own Wi-Fi pane — not this app's Settings. Same
+    /// URL scheme Control Center's own "Wi-Fi Settings…" link uses.
+    private func openWiFiSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.wifi-settings") else { return }
+        NSWorkspace.shared.open(url)
     }
 }
