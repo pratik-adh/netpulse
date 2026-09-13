@@ -63,9 +63,41 @@ final class NetworkStatusItemController: NSObject {
     private func refresh() {
         guard let button = statusItem.button else { return }
 
-        let shouldShow = model.settings.networkTrackingEnabled && model.settings.showNetworkSpeedInMenuBar
-        statusItem.isVisible = shouldShow
-        guard shouldShow else { return }
+        guard model.settings.showNetworkSpeedInMenuBar else {
+            statusItem.isVisible = false
+            return
+        }
+
+        let networkPaused = !model.settings.networkTrackingEnabled
+        let breaksPaused = model.isManuallyPaused
+
+        // Both features paused at once: the break icon already shows a
+        // single pause glyph, so this one steps aside rather than showing a
+        // second, redundant one right beside it. If a popover happened to be
+        // open when the second pause landed, close it too — otherwise it's
+        // left floating with no icon to anchor to.
+        if networkPaused && breaksPaused {
+            statusItem.isVisible = false
+            closePopover()
+            return
+        }
+
+        statusItem.isVisible = true
+
+        if networkPaused {
+            // Just network is paused — show its own pause glyph instead of
+            // vanishing, so the icon (and any open popover) stays anchored,
+            // the same way the break icon never fully disappears either.
+            let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
+            let icon = NSImage(systemSymbolName: "pause.circle", accessibilityDescription: "Network paused")?
+                .withSymbolConfiguration(config)
+            icon?.isTemplate = true
+            button.image = icon
+            button.attributedTitle = NSAttributedString(string: "")
+            button.imagePosition = .imageOnly
+            button.toolTip = "Network — paused"
+            return
+        }
 
         // A total, not a live rate: the menu bar reads at a glance without
         // flickering every second, and stays meaningful when you're not
