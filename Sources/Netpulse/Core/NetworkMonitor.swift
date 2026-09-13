@@ -2,7 +2,7 @@ import Darwin
 import Foundation
 
 /// Reads cumulative bytes sent/received across the Mac's network interfaces
-/// since boot — the same BSD interface counters Activity Monitor's network
+/// since boot - the same BSD interface counters Activity Monitor's network
 /// tab and tools like `nettop`/`netstat -ib` read. No special permission is
 /// needed, and there's no per-app breakdown: that needs a privileged packet
 /// filter or a Network Extension, well outside what an unprivileged,

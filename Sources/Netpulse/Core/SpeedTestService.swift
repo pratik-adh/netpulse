@@ -1,14 +1,14 @@
 import Foundation
 
-/// An on-demand internet speed test — the one place in Downtime that makes
+/// An on-demand internet speed test - the one place in Downtime that makes
 /// an actual network request. Everything else in the app (usage tracking,
 /// calendar checks, notifications) is a purely local read; there is no way
 /// to measure real throughput without moving real bytes across the internet,
-/// so this only ever runs when you explicitly tap "Test Speed" — never in
+/// so this only ever runs when you explicitly tap "Test Speed" - never in
 /// the background, never automatically.
 ///
 /// Uses Cloudflare's public speed-test endpoints (the same infrastructure
-/// behind speed.cloudflare.com and many third-party speed test tools) —
+/// behind speed.cloudflare.com and many third-party speed test tools) -
 /// no API key, no account, no data attached beyond what any ordinary HTTPS
 /// request carries.
 struct SpeedTestResult: Equatable {
@@ -28,7 +28,7 @@ enum SpeedTestStage: Equatable {
 
 final class SpeedTestService {
 
-    private static let downloadBytes = 25_000_000  // 25 MB — enough for a stable reading without dragging on
+    private static let downloadBytes = 25_000_000  // 25 MB - enough for a stable reading without dragging on
     private static let uploadBytes = 10_000_000     // 10 MB
 
     private let session: URLSession
@@ -149,7 +149,7 @@ final class SpeedTestService {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
-        // Content doesn't matter, only size — this never carries anything
+        // Content doesn't matter, only size - this never carries anything
         // about you beyond the bytes themselves and standard HTTP headers.
         let payload = Data(count: Self.uploadBytes)
 

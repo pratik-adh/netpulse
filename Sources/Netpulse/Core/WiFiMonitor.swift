@@ -4,7 +4,7 @@ import Foundation
 
 /// The current Wi-Fi network's name, used only to label network usage by
 /// network in the Network tab. macOS requires Location Services authorization
-/// to read a Wi-Fi SSID at all — a restriction Apple added because a SSID can
+/// to read a Wi-Fi SSID at all - a restriction Apple added because a SSID can
 /// reveal where you are, not something this app has any way around.
 final class WiFiMonitor: NSObject, CLLocationManagerDelegate {
 
@@ -46,7 +46,7 @@ final class WiFiMonitor: NSObject, CLLocationManagerDelegate {
 
     /// The current Wi-Fi network's name, or `nil` if it can't be determined
     /// (no permission, no active Wi-Fi interface). Wired/Ethernet connections
-    /// have no SSID to report — the caller labels those separately.
+    /// have no SSID to report - the caller labels those separately.
     func currentNetworkLabel() -> String? {
         guard isAuthorized else { return nil }
         guard let ssid = wifiClient.interface()?.ssid(), !ssid.isEmpty else { return nil }

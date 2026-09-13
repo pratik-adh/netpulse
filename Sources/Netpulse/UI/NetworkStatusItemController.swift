@@ -2,13 +2,13 @@ import AppKit
 import SwiftUI
 import Combine
 
-/// A second, independent status item for network usage — deliberately kept
+/// A second, independent status item for network usage - deliberately kept
 /// separate from the break-reminder icon so the two features read "at a
 /// glance" as distinct things, and so pausing one never touches the other.
 ///
 /// This item fully disappears when network tracking is off. That's safe here
 /// (unlike the break icon) because the break status item is always present
-/// as the app's one guaranteed way back in — Settings and Quit live there
+/// as the app's one guaranteed way back in - Settings and Quit live there
 /// too, so hiding *this* icon never leaves the app unreachable.
 final class NetworkStatusItemController: NSObject {
 
@@ -38,7 +38,7 @@ final class NetworkStatusItemController: NSObject {
 
             // Mirrors the break status item: the button's own width tracks
             // its content, which slides its window sideways as the menu bar
-            // repacks — watch for that so an open popover stays anchored.
+            // repacks - watch for that so an open popover stays anchored.
             if let window = button.window {
                 let names: [Notification.Name] = [NSWindow.didResizeNotification, NSWindow.didMoveNotification]
                 buttonWindowObservers = names.map { name in
@@ -74,7 +74,7 @@ final class NetworkStatusItemController: NSObject {
         // Both features paused at once: the break icon already shows a
         // single pause glyph, so this one steps aside rather than showing a
         // second, redundant one right beside it. If a popover happened to be
-        // open when the second pause landed, close it too — otherwise it's
+        // open when the second pause landed, close it too - otherwise it's
         // left floating with no icon to anchor to.
         if networkPaused && breaksPaused {
             statusItem.isVisible = false
@@ -85,7 +85,7 @@ final class NetworkStatusItemController: NSObject {
         statusItem.isVisible = true
 
         if networkPaused {
-            // Just network is paused — show its own pause glyph instead of
+            // Just network is paused - show its own pause glyph instead of
             // vanishing, so the icon (and any open popover) stays anchored,
             // the same way the break icon never fully disappears either.
             let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
@@ -95,7 +95,7 @@ final class NetworkStatusItemController: NSObject {
             button.image = icon
             button.attributedTitle = NSAttributedString(string: "")
             button.imagePosition = .imageOnly
-            button.toolTip = "Network — paused"
+            button.toolTip = "Network - paused"
             return
         }
 
@@ -133,7 +133,7 @@ final class NetworkStatusItemController: NSObject {
 
     private var tooltip: String {
         let today = model.todayStat
-        var lines = ["Network — ↓ \(Format.bytes(today.bytesReceived))  ↑ \(Format.bytes(today.bytesSent)) today"]
+        var lines = ["Network - ↓ \(Format.bytes(today.bytesReceived))  ↑ \(Format.bytes(today.bytesSent)) today"]
         let week = model.networkTotal(lastDays: 7)
         lines.append("This week: \(Format.bytes(week.received + week.sent))")
         return lines.joined(separator: "\n")
@@ -206,7 +206,7 @@ final class NetworkStatusItemController: NSObject {
         }
 
         menu.addItem(.separator())
-        // Deliberately no "Quit Downtime" here — this is a per-feature menu,
+        // Deliberately no "Quit Downtime" here - this is a per-feature menu,
         // and quitting the app from it would take the break reminders down
         // too. The break icon's menu is the one place that actually quits.
         menu.addItem(item("Settings…", #selector(openSettings), ","))

@@ -1,13 +1,13 @@
 import SwiftUI
 import AppKit
 
-/// The network icon's popover — deliberately mirrors `PopoverView`'s shape
+/// The network icon's popover - deliberately mirrors `PopoverView`'s shape
 /// (header, hero, list, stats, footer) so the two features read as siblings,
 /// even though what's inside each section is different.
 struct NetworkPopoverView: View {
     @ObservedObject var model: AppModel
-    /// Today's usage is the more useful number at a glance — a live rate
-    /// only means something the instant you're looking at it — so that's
+    /// Today's usage is the more useful number at a glance - a live rate
+    /// only means something the instant you're looking at it - so that's
     /// the default; the segmented control below the rings switches to live
     /// speed for anyone who wants that instead.
     @State private var showLiveSpeed = false
@@ -38,7 +38,7 @@ struct NetworkPopoverView: View {
     }
 
     /// While tracking is paused there's no live speed, no fresh usage, and
-    /// nothing new for the Wi-Fi list to show — so the panel collapses to a
+    /// nothing new for the Wi-Fi list to show - so the panel collapses to a
     /// single notice rather than a wall of stale, dimmed sections.
     private var pausedNotice: some View {
         VStack(spacing: 10) {
@@ -92,7 +92,7 @@ struct NetworkPopoverView: View {
         }
     }
 
-    // MARK: Hero — today's usage by default, ring-styled like the break countdown
+    // MARK: Hero - today's usage by default, ring-styled like the break countdown
 
     private var hero: some View {
         VStack(spacing: 8) {
@@ -104,9 +104,9 @@ struct NetworkPopoverView: View {
             }
             .opacity(isPaused ? 0.4 : 1)
 
-            // An explicit, always-visible either/or — not a single button
+            // An explicit, always-visible either/or - not a single button
             // whose current label you'd have to read to know what tapping it
-            // does — for switching what the big number in each ring means.
+            // does - for switching what the big number in each ring means.
             Picker("", selection: $showLiveSpeed) {
                 Text("Today's Usage").tag(false)
                 Text("Live Speed").tag(true)
@@ -117,12 +117,12 @@ struct NetworkPopoverView: View {
         }
     }
 
-    /// In Usage mode the ring fills toward a concrete MB target — your own
+    /// In Usage mode the ring fills toward a concrete MB target - your own
     /// daily data budget (Settings → Network) if you've set one, since that's
     /// already the one number in this app meant to represent "a day's worth,"
     /// or a plain 1 GB milestone if you haven't. In Live Speed mode there's no
     /// such natural target, so it keeps the same illustrative 5 MB/s soft cap
-    /// as before — ordinary browsing sits mid-ring, only heavy transfers fill it.
+    /// as before - ordinary browsing sits mid-ring, only heavy transfers fill it.
     private func speedRing(direction: String, symbol: String, bps: Double, usage: Int, tint: Color) -> some View {
         let usageCap = model.settings.dailyDataLimitMB > 0
             ? Double(model.settings.dailyDataLimitMB) * 1_000_000
@@ -159,7 +159,7 @@ struct NetworkPopoverView: View {
         }
     }
 
-    // MARK: Speed test — the one place this app makes an actual network
+    // MARK: Speed test - the one place this app makes an actual network
     // request, and only when you tap the button.
 
     @ViewBuilder
@@ -228,7 +228,7 @@ struct NetworkPopoverView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.orange)
-                        Text("Speed test failed — check your connection.")
+                        Text("Speed test failed - check your connection.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Spacer()
@@ -249,7 +249,7 @@ struct NetworkPopoverView: View {
         }
     }
 
-    /// Distinct from a generic test failure — this is what it looks like
+    /// Distinct from a generic test failure - this is what it looks like
     /// when the Mac itself has no usable network path at all, checked live
     /// via `NWPathMonitor` rather than assumed from the test result alone.
     private var noConnectionNotice: some View {
@@ -306,7 +306,7 @@ struct NetworkPopoverView: View {
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.secondary)
             if model.perNetworkLocationDenied {
-                Text("Location access is off — enable it in Settings to see this.")
+                Text("Location access is off - enable it in Settings to see this.")
                     .font(.caption2)
                     .foregroundStyle(.orange)
             } else if model.perNetworkUsageTotals.isEmpty {
@@ -324,8 +324,8 @@ struct NetworkPopoverView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Every row opens the same place — macOS's own Wi-Fi settings, not this
-    /// app's — regardless of whether it's the network you're on right now or
+    /// Every row opens the same place - macOS's own Wi-Fi settings, not this
+    /// app's - regardless of whether it's the network you're on right now or
     /// not; the "now" badge is informational only, not a different kind of row.
     private func networkRow(_ entry: (name: String, received: Int, sent: Int), isCurrent: Bool) -> some View {
         Button {
@@ -363,7 +363,7 @@ struct NetworkPopoverView: View {
     }
 
     /// "Other network" is a fallback bucket (wired, VPN-only, or an
-    /// unreadable SSID) rather than a real Wi-Fi network — giving it the
+    /// unreadable SSID) rather than a real Wi-Fi network - giving it the
     /// same wifi glyph as everything else would claim a signal that isn't
     /// there.
     private func networkSymbol(for name: String) -> String {
@@ -399,7 +399,7 @@ struct NetworkPopoverView: View {
             Spacer()
 
             // While paused, `pausedNotice` above already has its own
-            // prominent Resume Network Mode button — repeating the same
+            // prominent Resume Network Mode button - repeating the same
             // action here too was just clutter, so this slot only appears
             // when there's something to quit.
             if !isPaused {
@@ -409,7 +409,7 @@ struct NetworkPopoverView: View {
                     footerLabel("Quit Network Mode", symbol: "pause.circle")
                 }
                 .buttonStyle(.borderless)
-                .help("Quit network mode — stops tracking, leaves break reminders untouched")
+                .help("Quit network mode - stops tracking, leaves break reminders untouched")
             }
         }
         .foregroundStyle(.secondary)
@@ -443,7 +443,7 @@ struct NetworkPopoverView: View {
         model.onOpenSettings?()
     }
 
-    /// Deep-links to macOS's own Wi-Fi pane — not this app's Settings. Same
+    /// Deep-links to macOS's own Wi-Fi pane - not this app's Settings. Same
     /// URL scheme Control Center's own "Wi-Fi Settings…" link uses.
     private func openWiFiSettings() {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.wifi-settings") else { return }

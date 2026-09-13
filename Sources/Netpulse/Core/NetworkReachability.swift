@@ -1,7 +1,7 @@
 import Network
 import Foundation
 
-/// Whether the Mac currently has a usable network path — used only to show
+/// Whether the Mac currently has a usable network path - used only to show
 /// a clear "no connection available" state for the speed test, instead of
 /// a generic failure. `NWPathMonitor` is a local system read: no permission
 /// prompt, no network request of its own.
