@@ -24,8 +24,6 @@ struct NetworkPopoverView: View {
                 } else {
                     enablePerNetworkHint
                 }
-                Divider().opacity(0.5)
-                statsSection
             }
             footer
         }
@@ -93,8 +91,10 @@ struct NetworkPopoverView: View {
 
     private var hero: some View {
         HStack(spacing: 18) {
-            speedRing(direction: "Down", symbol: "arrow.down", bps: model.downloadSpeedBps, tint: .blue)
-            speedRing(direction: "Up", symbol: "arrow.up", bps: model.uploadSpeedBps, tint: .green)
+            speedRing(direction: "Down", symbol: "arrow.down", bps: model.downloadSpeedBps,
+                      usage: model.todayStat.bytesReceived, tint: .blue)
+            speedRing(direction: "Up", symbol: "arrow.up", bps: model.uploadSpeedBps,
+                      usage: model.todayStat.bytesSent, tint: .green)
         }
         .opacity(isPaused ? 0.4 : 1)
     }
@@ -102,7 +102,10 @@ struct NetworkPopoverView: View {
     /// An illustrative gauge, not a literal goal like the break countdown's
     /// ring — there's no natural "full" for network speed, so a soft cap
     /// keeps ordinary browsing mid-ring and only heavy transfers fill it.
-    private func speedRing(direction: String, symbol: String, bps: Double, tint: Color) -> some View {
+    /// The ring itself stays a live speed reading; today's actual usage total
+    /// sits underneath, so "how fast right now" and "how much today" are both
+    /// visible without digging into Settings.
+    private func speedRing(direction: String, symbol: String, bps: Double, usage: Int, tint: Color) -> some View {
         let cap = 5_000_000.0
         let progress = min(1, bps / cap)
         return VStack(spacing: 6) {
@@ -121,6 +124,9 @@ struct NetworkPopoverView: View {
             .frame(width: 74, height: 74)
             Text(direction)
                 .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+            Text(Format.bytes(usage))
+                .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.secondary)
         }
     }
@@ -344,21 +350,6 @@ struct NetworkPopoverView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             Spacer()
-        }
-    }
-
-    // MARK: Stats
-
-    private var statsSection: some View {
-        HStack(spacing: 7) {
-            StatChip(symbol: "arrow.down.circle.fill",
-                     value: Format.bytes(model.todayStat.bytesReceived),
-                     caption: "down today",
-                     tint: .blue)
-            StatChip(symbol: "arrow.up.circle.fill",
-                     value: Format.bytes(model.todayStat.bytesSent),
-                     caption: "up today",
-                     tint: .green)
         }
     }
 
