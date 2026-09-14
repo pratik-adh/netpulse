@@ -80,7 +80,7 @@ struct NetworkPopoverView: View {
                 Image(systemName: isPaused ? "play.circle.fill" : "pause.circle")
             }
             .buttonStyle(.borderless)
-            .help(isPaused ? "Resume Network Mode" : "Quit Network Mode")
+            .help(isPaused ? "Resume Network Mode" : "Pause Network Mode")
 
             Button {
                 openSettings()
@@ -401,15 +401,15 @@ struct NetworkPopoverView: View {
             // While paused, `pausedNotice` above already has its own
             // prominent Resume Network Mode button - repeating the same
             // action here too was just clutter, so this slot only appears
-            // when there's something to quit.
+            // when there's something to pause.
             if !isPaused {
                 Button {
                     pause()
                 } label: {
-                    footerLabel("Quit Network Mode", symbol: "pause.circle")
+                    footerLabel("Pause Network Mode", symbol: "pause.circle")
                 }
                 .buttonStyle(.borderless)
-                .help("Quit network mode - stops tracking, leaves break reminders untouched")
+                .help("Pause network mode - stops tracking until you resume; break reminders are untouched")
             }
         }
         .foregroundStyle(.secondary)

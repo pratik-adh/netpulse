@@ -200,7 +200,7 @@ final class NetworkStatusItemController: NSObject {
         menu.addItem(.separator())
 
         if model.settings.networkTrackingEnabled {
-            menu.addItem(item("Quit Network Mode", #selector(pauseNetwork)))
+            menu.addItem(item("Pause Network Mode", #selector(pauseNetwork)))
         } else {
             menu.addItem(item("Resume Network Mode", #selector(resumeNetwork)))
         }
@@ -209,6 +209,9 @@ final class NetworkStatusItemController: NSObject {
         // Deliberately no "Quit Downtime" here - this is a per-feature menu,
         // and quitting the app from it would take the break reminders down
         // too. The break icon's menu is the one place that actually quits.
+        // "Pause", not "Quit", because this toggle is fully reversible with
+        // one click - the word "Quit" is reserved for the one action that
+        // actually ends the process.
         menu.addItem(item("Settings…", #selector(openSettings), ","))
 
         statusItem.menu = menu
