@@ -105,29 +105,35 @@ final class NetworkStatusItemController: NSObject {
         // in the popover's hero rings, instead.
         let total = model.menuBarUsageTotal
         let text = model.settings.showUploadDownloadSeparately
-            ? "↓\(Format.bytes(total.received))  ↑\(Format.bytes(total.sent))"
-            : Format.bytes(total.received + total.sent)
+            ? "↓ \(Format.bytes(total.received)) ↑ \(Format.bytes(total.sent))"
+            : "↓↑ \(Format.bytes(total.received + total.sent))"
 
-        // Same `SymbolConfiguration` approach and point size as the break
-        // icon, so the two sit visually aligned and consistently sized next
-        // to each other rather than looking like two different conventions.
-        // The title itself uses a fully monospaced font (not just tabular
-        // digits) so the unit letters (B/K/M/G) and arrows advance by the
-        // same width too, not just the numbers.
-        let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
-        let icon = NSImage(systemSymbolName: "network", accessibilityDescription: "Network usage")?
-            .withSymbolConfiguration(config)
-        icon?.isTemplate = true
-
+        // No status-item icon here (unlike the break item) - with the arrows
+        // already carrying the up/down meaning, a leading glyph was purely
+        // decorative. The title itself uses a fully monospaced font (not
+        // just tabular digits) so the unit letters (B/K/M/G) and arrows
+        // advance by the same width too, not just the numbers.
         button.image = nil
         button.imagePosition = .noImage
-        if let icon {
-            button.attributedTitle = MenuBarComposer.attributedTitle(
-                icon: icon,
-                text: text,
-                font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        let smallFont = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+
+        let attributedTitle = NSMutableAttributedString(
+            string: text,
+            attributes: [.font: font]
+        )
+
+        let pattern = "KB|MB|GB|TB"
+
+        if let range = text.range(of: pattern, options: .regularExpression) {
+            attributedTitle.addAttribute(
+                .font,
+                value: smallFont,
+                range: NSRange(range, in: text)
             )
         }
+
+        button.attributedTitle = attributedTitle
         button.toolTip = tooltip
     }
 
@@ -240,7 +246,7 @@ final class NetworkStatusItemController: NSObject {
     }
 
     @objc private func openSettings() {
-        model.pendingSettingsTab = 5
+        model.pendingSettingsTab = 1
         model.onOpenSettings?()
     }
 

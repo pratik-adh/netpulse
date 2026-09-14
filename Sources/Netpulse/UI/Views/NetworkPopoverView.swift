@@ -70,7 +70,7 @@ struct NetworkPopoverView: View {
             Image(systemName: "network")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Color.blue)
-            Text("Network")
+            Text("Downtime - Network")
                 .font(.system(size: 14, weight: .semibold))
             Spacer()
 
@@ -439,7 +439,7 @@ struct NetworkPopoverView: View {
     }
 
     private func openSettings() {
-        model.pendingSettingsTab = 5
+        model.pendingSettingsTab = 1
         model.onOpenSettings?()
     }
 
