@@ -108,8 +108,8 @@ struct NetworkPopoverView: View {
             // whose current label you'd have to read to know what tapping it
             // does - for switching what the big number in each ring means.
             Picker("", selection: $showLiveSpeed) {
-                Text("Today's Usage").tag(false)
-                Text("Live Speed").tag(true)
+                Text("Usage").tag(false)
+                Text("Speed").tag(true)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
