@@ -1,9 +1,8 @@
 import SwiftUI
 import AppKit
 
-/// The network icon's popover - deliberately mirrors `PopoverView`'s shape
-/// (header, hero, list, stats, footer) so the two features read as siblings,
-/// even though what's inside each section is different.
+/// The menu bar icon's popover: header, hero rings, speed test, Wi-Fi list,
+/// footer.
 struct NetworkPopoverView: View {
     @ObservedObject var model: AppModel
     /// Today's usage is the more useful number at a glance - a live rate
@@ -56,7 +55,7 @@ struct NetworkPopoverView: View {
             Image(systemName: "pause.circle")
                 .font(.system(size: 34, weight: .light))
                 .foregroundStyle(.secondary)
-            Text("Network tracking is paused")
+            Text("Tracking is paused")
                 .font(.system(size: 13, weight: .semibold))
             Text("Resume to see live speed, usage, and run a speed test.")
                 .font(.caption)
@@ -65,7 +64,7 @@ struct NetworkPopoverView: View {
             Button {
                 resume()
             } label: {
-                Label("Resume Network Mode", systemImage: "play.circle.fill")
+                Label("Resume tracking", systemImage: "play.circle.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -78,10 +77,10 @@ struct NetworkPopoverView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Image(systemName: "network")
+            Image(systemName: "waveform.path.ecg")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Color.blue)
-            Text("Downtime - Network")
+            Text("Netpulse")
                 .font(.system(size: 14, weight: .semibold))
             Spacer()
 
@@ -91,7 +90,7 @@ struct NetworkPopoverView: View {
                 Image(systemName: isPaused ? "play.circle.fill" : "pause.circle")
             }
             .buttonStyle(.borderless)
-            .help(isPaused ? "Resume Network Mode" : "Pause Network Mode")
+            .help(isPaused ? "Resume tracking" : "Pause tracking")
 
             Button {
                 openSettings()
@@ -103,7 +102,7 @@ struct NetworkPopoverView: View {
         }
     }
 
-    // MARK: Hero - today's usage by default, ring-styled like the break countdown
+    // MARK: Hero - today's usage by default, or live speed
 
     private var hero: some View {
         VStack(spacing: 8) {
@@ -458,22 +457,33 @@ struct NetworkPopoverView: View {
             Spacer()
 
             // While paused, `pausedNotice` above already has its own
-            // prominent Resume Network Mode button - repeating the same
-            // action here too was just clutter, so this slot only appears
-            // when there's something to pause.
+            // prominent Resume button - repeating the same action here too
+            // was just clutter, so this slot only appears when there's
+            // something to pause.
             if !isPaused {
                 Button {
                     pause()
                 } label: {
-                    footerLabel("Pause Network Mode", symbol: "pause.circle")
+                    footerLabel("Pause", symbol: "pause.circle")
                 }
                 .buttonStyle(.borderless)
-                .help("Pause network mode - stops tracking until you resume; break reminders are untouched")
+                .help("Pause tracking until you resume")
             }
+
+            Button {
+                NSApp.terminate(nil)
+            } label: {
+                footerLabel("Quit", symbol: "power")
+            }
+            .buttonStyle(.borderless)
+            .help("Quit Netpulse")
         }
         .foregroundStyle(.secondary)
     }
 
+    /// Built from a bare `Image` + `Text` rather than a `Label`: the button
+    /// style repaints a `Label` in full-strength primary, which left Pause
+    /// looking bolder than the secondary-grey Quit beside it.
     private func footerLabel(_ title: String, symbol: String) -> some View {
         HStack(spacing: 4) {
             Image(systemName: symbol)
@@ -498,7 +508,6 @@ struct NetworkPopoverView: View {
     }
 
     private func openSettings() {
-        model.pendingSettingsTab = 1
         model.onOpenSettings?()
     }
 

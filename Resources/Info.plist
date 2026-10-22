@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>Netpulse</string>
+	<key>CFBundleDisplayName</key>
+	<string>Netpulse</string>
+	<key>CFBundleExecutable</key>
+	<string>Netpulse</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.netpulse.mac</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSSupportsAutomaticTermination</key>
+	<false/>
+	<key>NSSupportsSuddenTermination</key>
+	<false/>
+	<key>NSHumanReadableCopyright</key>
+	<string>Netpulse - network usage and speed in the macOS menu bar.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>Netpulse can label your usage history by Wi-Fi network name, if you turn that on in Settings → Usage. This is read locally and never leaves your Mac.</string>
+</dict>
+</plist>

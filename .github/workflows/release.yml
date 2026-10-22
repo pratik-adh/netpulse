@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build universal app bundle
+        run: ./build.sh --universal
+
+      - name: Zip and checksum
+        id: package
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          zip_name="Netpulse-${version}-macOS.zip"
+          ditto -c -k --sequesterRsrc --keepParent dist/Netpulse.app "$zip_name"
+          shasum -a 256 "$zip_name" | tee checksum.txt
+          echo "zip_name=$zip_name" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Netpulse ${{ github.ref_name }}"
+          files: |
+            ${{ steps.package.outputs.zip_name }}
+            checksum.txt
+          generate_release_notes: true

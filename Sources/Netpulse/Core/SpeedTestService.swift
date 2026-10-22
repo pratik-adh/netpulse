@@ -1,8 +1,8 @@
 import Foundation
 
-/// An on-demand internet speed test - the one place in Downtime that makes
+/// An on-demand internet speed test - the one place in Netpulse that makes
 /// an actual network request. Everything else in the app (usage tracking,
-/// calendar checks, notifications) is a purely local read; there is no way
+/// Wi-Fi names, the data-budget notification) is a purely local read; there is no way
 /// to measure real throughput without moving real bytes across the internet,
 /// so this only ever runs when you explicitly tap "Test Speed" - never in
 /// the background, never automatically.

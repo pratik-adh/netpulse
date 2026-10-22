@@ -2,14 +2,10 @@ import AppKit
 import SwiftUI
 import Combine
 
-/// A second, independent status item for network usage - deliberately kept
-/// separate from the break-reminder icon so the two features read "at a
-/// glance" as distinct things, and so pausing one never touches the other.
-///
-/// This item fully disappears when network tracking is off. That's safe here
-/// (unlike the break icon) because the break status item is always present
-/// as the app's one guaranteed way back in - Settings and Quit live there
-/// too, so hiding *this* icon never leaves the app unreachable.
+/// Owns the menu bar item: the usage readout, the popover and the
+/// right-click menu. It's the app's only way in - there's no Dock icon and
+/// no main window - so it never hides itself: paused, it shows a pause glyph,
+/// and with the readout turned off it shows a bare icon.
 final class NetworkStatusItemController: NSObject, NSPopoverDelegate {
 
     private let model: AppModel
@@ -24,8 +20,7 @@ final class NetworkStatusItemController: NSObject, NSPopoverDelegate {
     /// skip re-rendering the attributed title - the costly part of
     /// `refresh()` - when the visible text and state haven't moved.
     private enum RenderedState: Equatable {
-        case hidden
-        case pausedGlyph
+        case glyph(symbol: String, tooltip: String)
         case text(title: String, tooltip: String)
     }
     private var lastRenderedState: RenderedState?
@@ -48,9 +43,10 @@ final class NetworkStatusItemController: NSObject, NSPopoverDelegate {
             _ = button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.imageScaling = .scaleProportionallyDown
 
-            // Mirrors the break status item: the button's own width tracks
-            // its content, which slides its window sideways as the menu bar
-            // repacks - watch for that so an open popover stays anchored.
+            // The button's own width tracks its content (the readout grows
+            // from "340KB" to "1.2GB", or collapses to a bare pause glyph),
+            // which slides its window sideways as the menu bar repacks -
+            // watch for that so an open popover stays anchored.
             if let window = button.window {
                 let names: [Notification.Name] = [NSWindow.didResizeNotification, NSWindow.didMoveNotification]
                 buttonWindowObservers = names.map { name in
@@ -75,43 +71,16 @@ final class NetworkStatusItemController: NSObject, NSPopoverDelegate {
     private func refresh() {
         guard let button = statusItem.button else { return }
 
-        guard model.settings.showNetworkSpeedInMenuBar else {
-            statusItem.isVisible = false
-            lastRenderedState = .hidden
+        if !model.settings.networkTrackingEnabled {
+            // Paused - show a pause glyph instead of vanishing, so the icon
+            // (and any open popover) stays anchored and the app stays reachable.
+            showGlyph("pause.circle", on: button, accessibility: "Netpulse paused", tooltip: "Netpulse - paused")
             return
         }
 
-        let networkPaused = !model.settings.networkTrackingEnabled
-        let breaksPaused = model.isManuallyPaused
-
-        // Both features paused at once: the break icon already shows a
-        // single pause glyph, so this one steps aside rather than showing a
-        // second, redundant one right beside it. If a popover happened to be
-        // open when the second pause landed, close it too - otherwise it's
-        // left floating with no icon to anchor to.
-        if networkPaused && breaksPaused {
-            statusItem.isVisible = false
-            closePopover()
-            lastRenderedState = .hidden
-            return
-        }
-
-        statusItem.isVisible = true
-
-        if networkPaused {
-            guard lastRenderedState != .pausedGlyph else { return }
-            lastRenderedState = .pausedGlyph
-            // Just network is paused - show its own pause glyph instead of
-            // vanishing, so the icon (and any open popover) stays anchored,
-            // the same way the break icon never fully disappears either.
-            let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
-            let icon = NSImage(systemSymbolName: "pause.circle", accessibilityDescription: "Network paused")?
-                .withSymbolConfiguration(config)
-            icon?.isTemplate = true
-            button.image = icon
-            button.attributedTitle = NSAttributedString(string: "")
-            button.imagePosition = .imageOnly
-            button.toolTip = "Network - paused"
+        let tooltipText = tooltip
+        guard model.settings.showUsageInMenuBar else {
+            showGlyph("waveform.path.ecg", on: button, accessibility: "Netpulse", tooltip: tooltipText)
             return
         }
 
@@ -123,7 +92,6 @@ final class NetworkStatusItemController: NSObject, NSPopoverDelegate {
         let text = model.settings.showUploadDownloadSeparately
             ? "↓ \(Format.bytes(total.received)) ↑ \(Format.bytes(total.sent))"
             : "↓↑ \(Format.bytes(total.received + total.sent))"
-        let tooltipText = tooltip
 
         // The formatted total (and its tooltip) often hold steady for many
         // consecutive ticks - only rebuild the attributed title, which costs
@@ -133,11 +101,11 @@ final class NetworkStatusItemController: NSObject, NSPopoverDelegate {
         guard lastRenderedState != state else { return }
         lastRenderedState = state
 
-        // No status-item icon here (unlike the break item) - with the arrows
-        // already carrying the up/down meaning, a leading glyph was purely
-        // decorative. The title itself uses a fully monospaced font (not
-        // just tabular digits) so the unit letters (B/K/M/G) and arrows
-        // advance by the same width too, not just the numbers.
+        // No leading icon next to the readout - with the arrows already
+        // carrying the up/down meaning, a glyph would be purely decorative.
+        // The title uses a fully monospaced font (not just tabular digits)
+        // so the unit letters (B/K/M/G) and arrows advance by the same width
+        // too, not just the numbers.
         button.image = nil
         button.imagePosition = .noImage
         let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
@@ -164,16 +132,33 @@ final class NetworkStatusItemController: NSObject, NSPopoverDelegate {
         button.toolTip = tooltipText
     }
 
+    private func showGlyph(_ symbol: String, on button: NSStatusBarButton, accessibility: String, tooltip: String) {
+        let state = RenderedState.glyph(symbol: symbol, tooltip: tooltip)
+        guard lastRenderedState != state else { return }
+        lastRenderedState = state
+        let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
+        let icon = NSImage(systemSymbolName: symbol, accessibilityDescription: accessibility)?
+            .withSymbolConfiguration(config)
+        icon?.isTemplate = true
+        button.image = icon
+        button.attributedTitle = NSAttributedString(string: "")
+        button.imagePosition = .imageOnly
+        button.toolTip = tooltip
+    }
+
     private var tooltip: String {
         let today = model.todayStat
-        var lines = ["Network - ↓ \(Format.bytes(today.bytesReceived))  ↑ \(Format.bytes(today.bytesSent)) today"]
+        var lines = ["Netpulse - ↓ \(Format.bytes(today.bytesReceived))  ↑ \(Format.bytes(today.bytesSent)) today"]
         let week = model.networkTotal(lastDays: 7)
         lines.append("This week: \(Format.bytes(week.received + week.sent))")
         return lines.joined(separator: "\n")
     }
 
-    /// Same trick as the break status item: `NSPopover` only positions itself
-    /// on first show, so slide its window manually when the button resizes.
+    /// `NSPopover.show(relativeTo:of:)` only positions the popover the first
+    /// time - calling it again while already shown is a no-op - so when the
+    /// button's width changes under an open popover, slide the popover's own
+    /// window by the same horizontal delta instead, keeping its arrow lined
+    /// up with the button's new center.
     private func recenterOpenPopover(on button: NSStatusBarButton) {
         guard popover.isShown,
               let popoverWindow = popover.contentViewController?.view.window,
@@ -244,20 +229,18 @@ final class NetworkStatusItemController: NSObject, NSPopoverDelegate {
         menu.addItem(status)
         menu.addItem(.separator())
 
-        if model.settings.networkTrackingEnabled {
-            menu.addItem(item("Pause Network Mode", #selector(pauseNetwork)))
-        } else {
-            menu.addItem(item("Resume Network Mode", #selector(resumeNetwork)))
-        }
-
-        menu.addItem(.separator())
-        // Deliberately no "Quit Downtime" here - this is a per-feature menu,
-        // and quitting the app from it would take the break reminders down
-        // too. The break icon's menu is the one place that actually quits.
         // "Pause", not "Quit", because this toggle is fully reversible with
         // one click - the word "Quit" is reserved for the one action that
         // actually ends the process.
+        if model.settings.networkTrackingEnabled {
+            menu.addItem(item("Pause tracking", #selector(pauseNetwork)))
+        } else {
+            menu.addItem(item("Resume tracking", #selector(resumeNetwork)))
+        }
+
+        menu.addItem(.separator())
         menu.addItem(item("Settings…", #selector(openSettings), ","))
+        menu.addItem(item("Quit Netpulse", #selector(quit), "q"))
 
         statusItem.menu = menu
         statusItem.button?.performClick(nil)
@@ -284,10 +267,8 @@ final class NetworkStatusItemController: NSObject, NSPopoverDelegate {
         model.settings = copy
     }
 
-    @objc private func openSettings() {
-        model.pendingSettingsTab = 1
-        model.onOpenSettings?()
-    }
+    @objc private func openSettings() { model.onOpenSettings?() }
+    @objc private func quit() { NSApp.terminate(nil) }
 
     deinit {
         for observer in buttonWindowObservers {

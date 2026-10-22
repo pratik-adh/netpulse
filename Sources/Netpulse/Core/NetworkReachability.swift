@@ -7,7 +7,7 @@ import Foundation
 /// prompt, no network request of its own.
 final class NetworkReachability {
     private let monitor = NWPathMonitor()
-    private let queue = DispatchQueue(label: "com.downtime.mac.reachability")
+    private let queue = DispatchQueue(label: "com.netpulse.mac.reachability")
 
     init(onChange: @escaping (Bool) -> Void) {
         monitor.pathUpdateHandler = { path in

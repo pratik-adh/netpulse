@@ -2,8 +2,8 @@ import CoreLocation
 import CoreWLAN
 import Foundation
 
-/// The current Wi-Fi network's name, used only to label network usage by
-/// network in the Network tab. macOS requires Location Services authorization
+/// The current Wi-Fi network's name, used only to label usage by network
+/// in Settings → Usage and the popover. macOS requires Location Services authorization
 /// to read a Wi-Fi SSID at all - a restriction Apple added because a SSID can
 /// reveal where you are, not something this app has any way around.
 final class WiFiMonitor: NSObject, CLLocationManagerDelegate {
