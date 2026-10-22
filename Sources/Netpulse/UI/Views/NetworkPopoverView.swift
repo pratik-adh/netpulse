@@ -14,6 +14,17 @@ struct NetworkPopoverView: View {
 
     private var isPaused: Bool { !model.settings.networkTrackingEnabled }
 
+    /// While a speed test is actively moving bytes, the hero rings switch
+    /// from ambient usage/speed to the test's own live throughput - reverts
+    /// automatically once the test lands on `.done`/`.failed`, where the
+    /// result chips below take over.
+    private var isTesting: Bool {
+        switch model.speedTestStage {
+        case .ping, .download, .upload: return true
+        case .idle, .done, .failed: return false
+        }
+    }
+
     var body: some View {
         VStack(spacing: 12) {
             header
@@ -97,23 +108,71 @@ struct NetworkPopoverView: View {
     private var hero: some View {
         VStack(spacing: 8) {
             HStack(spacing: 18) {
-                speedRing(direction: "Down", symbol: "arrow.down", bps: model.downloadSpeedBps,
-                          usage: model.todayStat.bytesReceived, tint: .blue)
-                speedRing(direction: "Up", symbol: "arrow.up", bps: model.uploadSpeedBps,
-                          usage: model.todayStat.bytesSent, tint: .green)
+                if isTesting {
+                    testRing(direction: "Down", symbol: "arrow.down",
+                             mbps: model.speedTestDownloadLiveMbps,
+                             isActive: model.speedTestStage == .download, tint: .blue)
+                    testRing(direction: "Up", symbol: "arrow.up",
+                             mbps: model.speedTestUploadLiveMbps,
+                             isActive: model.speedTestStage == .upload, tint: .green)
+                } else {
+                    speedRing(direction: "Down", symbol: "arrow.down", bps: model.downloadSpeedBps,
+                              usage: model.todayStat.bytesReceived, tint: .blue)
+                    speedRing(direction: "Up", symbol: "arrow.up", bps: model.uploadSpeedBps,
+                              usage: model.todayStat.bytesSent, tint: .green)
+                }
             }
             .opacity(isPaused ? 0.4 : 1)
 
             // An explicit, always-visible either/or - not a single button
             // whose current label you'd have to read to know what tapping it
             // does - for switching what the big number in each ring means.
+            // Hidden meaning during a test since the rings aren't in either
+            // mode then - they're showing the test's own live throughput.
             Picker("", selection: $showLiveSpeed) {
                 Text("Usage").tag(false)
                 Text("Speed").tag(true)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .disabled(isPaused)
+            .disabled(isPaused || isTesting)
+        }
+    }
+
+    /// The live ring shown in place of `speedRing` while a test is running.
+    /// A full ring means 100 Mbps - a round number comfortably above typical
+    /// home broadband, so mid-ring reads as "solidly fast" without needing
+    /// you to already know your plan's ceiling the way the ambient rings'
+    /// data-budget target does. The direction not currently being measured
+    /// stays dim and shows its last reading (zero before it's run, the
+    /// finished stage's result once it has) rather than resetting to blank.
+    private func testRing(direction: String, symbol: String, mbps: Double, isActive: Bool, tint: Color) -> some View {
+        let progress = min(1, mbps / 100.0)
+        let primary = mbps > 0 ? String(format: "%.0f Mbps", mbps) : "—"
+        let secondary = isActive ? "Testing…" : (mbps > 0 ? "Done" : "Waiting…")
+        let ringTint: Color = isActive ? tint : (mbps > 0 ? tint.opacity(0.6) : Color.secondary)
+        return VStack(spacing: 6) {
+            RingView(progress: progress, tint: ringTint, lineWidth: 7) {
+                VStack(spacing: 0) {
+                    Image(systemName: symbol)
+                        .font(.system(size: 11, weight: .semibold))
+                    Text(primary)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                .foregroundStyle(ringTint)
+            }
+            .frame(width: 74, height: 74)
+            Text(direction)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+            Text(secondary)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
     }
 

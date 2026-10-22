@@ -10,7 +10,7 @@ import Combine
 /// (unlike the break icon) because the break status item is always present
 /// as the app's one guaranteed way back in - Settings and Quit live there
 /// too, so hiding *this* icon never leaves the app unreachable.
-final class NetworkStatusItemController: NSObject {
+final class NetworkStatusItemController: NSObject, NSPopoverDelegate {
 
     private let model: AppModel
     private let statusItem: NSStatusItem
@@ -18,6 +18,17 @@ final class NetworkStatusItemController: NSObject {
     private let content: NSHostingController<NetworkPopoverView>
     private var cancellables = Set<AnyCancellable>()
     private var buttonWindowObservers: [NSObjectProtocol] = []
+
+    /// The menu bar total only changes in whole units the formatter actually
+    /// shows (e.g. "1.2MB" holds steady across many one-second ticks), so
+    /// skip re-rendering the attributed title - the costly part of
+    /// `refresh()` - when the visible text and state haven't moved.
+    private enum RenderedState: Equatable {
+        case hidden
+        case pausedGlyph
+        case text(title: String, tooltip: String)
+    }
+    private var lastRenderedState: RenderedState?
 
     init(model: AppModel) {
         self.model = model
@@ -29,6 +40,7 @@ final class NetworkStatusItemController: NSObject {
         popover.behavior = .transient
         popover.animates = true
         popover.contentViewController = content
+        popover.delegate = self
 
         if let button = statusItem.button {
             button.target = self
@@ -65,6 +77,7 @@ final class NetworkStatusItemController: NSObject {
 
         guard model.settings.showNetworkSpeedInMenuBar else {
             statusItem.isVisible = false
+            lastRenderedState = .hidden
             return
         }
 
@@ -79,12 +92,15 @@ final class NetworkStatusItemController: NSObject {
         if networkPaused && breaksPaused {
             statusItem.isVisible = false
             closePopover()
+            lastRenderedState = .hidden
             return
         }
 
         statusItem.isVisible = true
 
         if networkPaused {
+            guard lastRenderedState != .pausedGlyph else { return }
+            lastRenderedState = .pausedGlyph
             // Just network is paused - show its own pause glyph instead of
             // vanishing, so the icon (and any open popover) stays anchored,
             // the same way the break icon never fully disappears either.
@@ -107,6 +123,15 @@ final class NetworkStatusItemController: NSObject {
         let text = model.settings.showUploadDownloadSeparately
             ? "↓ \(Format.bytes(total.received)) ↑ \(Format.bytes(total.sent))"
             : "↓↑ \(Format.bytes(total.received + total.sent))"
+        let tooltipText = tooltip
+
+        // The formatted total (and its tooltip) often hold steady for many
+        // consecutive ticks - only rebuild the attributed title, which costs
+        // a regex scan and font-range lookup, when what's on screen would
+        // actually change.
+        let state = RenderedState.text(title: text, tooltip: tooltipText)
+        guard lastRenderedState != state else { return }
+        lastRenderedState = state
 
         // No status-item icon here (unlike the break item) - with the arrows
         // already carrying the up/down meaning, a leading glyph was purely
@@ -123,18 +148,20 @@ final class NetworkStatusItemController: NSObject {
             attributes: [.font: font]
         )
 
+        // `range(of:)` only ever finds the *first* match, which is why the
+        // upload figure kept its unit at full size when up/down are shown
+        // separately (two units in the string, e.g. "↓ 1.2MB ↑ 340KB") -
+        // enumerate every match instead so each one gets the small font.
         let pattern = "KB|MB|GB|TB"
-
-        if let range = text.range(of: pattern, options: .regularExpression) {
-            attributedTitle.addAttribute(
-                .font,
-                value: smallFont,
-                range: NSRange(range, in: text)
-            )
+        if let regex = try? NSRegularExpression(pattern: pattern) {
+            let fullRange = NSRange(text.startIndex..., in: text)
+            for match in regex.matches(in: text, range: fullRange) {
+                attributedTitle.addAttribute(.font, value: smallFont, range: match.range)
+            }
         }
 
         button.attributedTitle = attributedTitle
-        button.toolTip = tooltip
+        button.toolTip = tooltipText
     }
 
     private var tooltip: String {
@@ -192,6 +219,18 @@ final class NetworkStatusItemController: NSObject {
 
     func closePopover() {
         if popover.isShown { popover.performClose(nil) }
+    }
+
+    /// Fires however the popover closed - an explicit `performClose(nil)`
+    /// above, or (since it's `.transient`) AppKit dismissing it on an
+    /// outside click, which never goes through `closePopover()` at all. A
+    /// finished or in-flight speed test only means something while you're
+    /// looking at it, so either way this clears it back to idle rather than
+    /// leaving a stale result (or a test still quietly running) for the next
+    /// time the popover opens.
+    func popoverDidClose(_ notification: Notification) {
+        guard model.speedTestStage != .idle else { return }
+        model.cancelSpeedTest()
     }
 
     private func showMenu() {

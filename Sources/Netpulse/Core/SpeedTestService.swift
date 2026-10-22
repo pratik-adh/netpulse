@@ -33,6 +33,7 @@ final class SpeedTestService {
 
     private let session: URLSession
     private var currentTask: URLSessionTask?
+    private var progressTimer: DispatchSourceTimer?
     private var generation = 0
 
     init() {
@@ -46,11 +47,17 @@ final class SpeedTestService {
         generation += 1
         currentTask?.cancel()
         currentTask = nil
+        progressTimer?.cancel()
+        progressTimer = nil
     }
 
     /// Pings, then downloads, then uploads, reporting each stage as it
     /// starts so the UI can show real progress rather than one long spinner.
-    func run(onStageChange: @escaping (SpeedTestStage) -> Void) {
+    /// `onProgress` fires roughly every 200ms during the download and upload
+    /// stages with the instantaneous throughput measured so far (Mbps), so
+    /// the UI can animate a live gauge instead of waiting for the final
+    /// number at the end of each stage.
+    func run(onStageChange: @escaping (SpeedTestStage) -> Void, onProgress: @escaping (Double) -> Void) {
         cancel()
         let myGeneration = generation
         onStageChange(.ping)
@@ -63,7 +70,7 @@ final class SpeedTestService {
             }
             onStageChange(.download)
 
-            self.measureDownload { downloadMbps in
+            self.measureDownload(onProgress: onProgress) { downloadMbps in
                 guard self.generation == myGeneration else { return }
                 guard let downloadMbps else {
                     onStageChange(.failed)
@@ -71,7 +78,7 @@ final class SpeedTestService {
                 }
                 onStageChange(.upload)
 
-                self.measureUpload { uploadMbps in
+                self.measureUpload(onProgress: onProgress) { uploadMbps in
                     guard self.generation == myGeneration else { return }
                     guard let uploadMbps else {
                         onStageChange(.failed)
@@ -85,6 +92,30 @@ final class SpeedTestService {
                 }
             }
         }
+    }
+
+    /// Polls a task's cumulative byte counter on a fixed interval and turns
+    /// the delta since the last poll into an instantaneous Mbps reading -
+    /// `URLSession` only hands back a single total at completion, so this is
+    /// the one place that manufactures a "live" number during the transfer.
+    private func startProgressTimer(byteCount: @escaping () -> Int64, onProgress: @escaping (Double) -> Void) {
+        progressTimer?.cancel()
+        var lastBytes: Int64 = 0
+        var lastTime = Date()
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + 0.2, repeating: 0.2)
+        timer.setEventHandler {
+            let bytes = byteCount()
+            let now = Date()
+            let deltaBytes = bytes - lastBytes
+            let deltaTime = now.timeIntervalSince(lastTime)
+            lastBytes = bytes
+            lastTime = now
+            guard deltaTime > 0, deltaBytes > 0 else { return }
+            onProgress((Double(deltaBytes) * 8) / deltaTime / 1_000_000)
+        }
+        timer.resume()
+        progressTimer = timer
     }
 
     // MARK: - Stages
@@ -123,13 +154,15 @@ final class SpeedTestService {
         sample(3)
     }
 
-    private func measureDownload(completion: @escaping (Double?) -> Void) {
+    private func measureDownload(onProgress: @escaping (Double) -> Void, completion: @escaping (Double?) -> Void) {
         guard let url = URL(string: "https://speed.cloudflare.com/__down?bytes=\(Self.downloadBytes)") else {
             completion(nil)
             return
         }
         let start = Date()
-        let task = session.dataTask(with: url) { data, _, error in
+        let task = session.dataTask(with: url) { [weak self] data, _, error in
+            self?.progressTimer?.cancel()
+            self?.progressTimer = nil
             let elapsed = Date().timeIntervalSince(start)
             guard error == nil, let data, elapsed > 0.05 else {
                 completion(nil)
@@ -138,10 +171,11 @@ final class SpeedTestService {
             completion((Double(data.count) * 8) / elapsed / 1_000_000)
         }
         currentTask = task
+        startProgressTimer(byteCount: { [weak task] in task?.countOfBytesReceived ?? 0 }, onProgress: onProgress)
         task.resume()
     }
 
-    private func measureUpload(completion: @escaping (Double?) -> Void) {
+    private func measureUpload(onProgress: @escaping (Double) -> Void, completion: @escaping (Double?) -> Void) {
         guard let url = URL(string: "https://speed.cloudflare.com/__up") else {
             completion(nil)
             return
@@ -154,7 +188,9 @@ final class SpeedTestService {
         let payload = Data(count: Self.uploadBytes)
 
         let start = Date()
-        let task = session.uploadTask(with: request, from: payload) { _, _, error in
+        let task = session.uploadTask(with: request, from: payload) { [weak self] _, _, error in
+            self?.progressTimer?.cancel()
+            self?.progressTimer = nil
             let elapsed = Date().timeIntervalSince(start)
             guard error == nil, elapsed > 0.05 else {
                 completion(nil)
@@ -163,6 +199,7 @@ final class SpeedTestService {
             completion((Double(Self.uploadBytes) * 8) / elapsed / 1_000_000)
         }
         currentTask = task
+        startProgressTimer(byteCount: { [weak task] in task?.countOfBytesSent ?? 0 }, onProgress: onProgress)
         task.resume()
     }
 }
